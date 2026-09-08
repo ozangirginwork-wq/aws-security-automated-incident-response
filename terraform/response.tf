@@ -88,7 +88,8 @@ resource "aws_lambda_function" "incident_response" {
 
   environment {
     variables = {
-      ENABLE_LIVE_REMEDIATION = "true"
+      ENABLE_LIVE_REMEDIATION     = "true"
+      PROTECTED_SECURITY_GROUP_ID = aws_security_group.protected.id
     }
   }
 

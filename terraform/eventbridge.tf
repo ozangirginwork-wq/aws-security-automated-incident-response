@@ -26,6 +26,10 @@ resource "aws_cloudwatch_event_rule" "security_group_change" {
         "ec2.amazonaws.com"
       ]
 
+      requestParameters = {
+        groupId = [aws_security_group.protected.id]
+      }
+
       eventName = [
         "AuthorizeSecurityGroupIngress"
       ]

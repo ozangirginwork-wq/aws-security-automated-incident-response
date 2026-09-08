@@ -36,12 +36,18 @@ def lambda_handler(event, context=None):
     for key, value in response.items():
         print(f"  {key}: {value}")
 
+    if response.get("status") in {"BLOCKED", "FAILED"}:
+        return {"status": response["status"], "incident": incident, "response": response}
+
     # Stage 4: Verify
     verification = verify_remediation(response)
 
     print("[VERIFY]")
     for key, value in verification.items():
         print(f"  {key}: {value}")
+
+    if verification.get("status") != "VERIFIED":
+        raise RuntimeError("Incident remains unresolved: independent verification failed.")
 
     return {
         "status": "INCIDENT_HANDLED",

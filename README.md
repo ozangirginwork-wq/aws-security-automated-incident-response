@@ -4,7 +4,7 @@
 
 A hands-on AWS security engineering project that detects dangerous security group changes and automatically remediates public SSH exposure using an event-driven, least-privilege architecture.
 
-![Lab 6 — AWS Automated Incident Response](assets/lab6-thumbnail.svg)
+![Lab 6 — AWS Automated Incident Response](assets/lab6-thumbnail.png)
 
 > **Portfolio focus:** cloud security, incident response, security automation, Infrastructure as Code, Python/Boto3, IAM least privilege, and post-remediation verification.
 
@@ -171,7 +171,8 @@ The bucket is configured with:
 
 - S3 Block Public Access
 - server-side encryption
-- restricted CloudTrail bucket policy
+- CloudTrail bucket policy restricted to the lab trail ARN
+- HTTPS-only bucket access and CloudTrail log file validation
 - 30-day lifecycle expiration
 
 The short retention period keeps the lab lightweight while limiting unnecessary long-term storage.
@@ -215,14 +216,11 @@ The test suite validates scenarios including:
 Run locally with:
 
 ```bash
+python -m pip install -r requirements-dev.txt
 python -m pytest tests -q
 ```
 
-The local validation completed with:
-
-```text
-8 passed
-```
+The original live implementation had eight unit tests. The expanded suite also covers port ranges, all-protocol rules, IPv6, duplicate delivery, safety gates, and verification failures. See CI for current results.
 
 GitHub Actions also runs the Python tests plus Terraform formatting and validation on pushes and pull requests. CI does **not** require AWS credentials and does not perform an AWS deployment.
 
@@ -261,7 +259,7 @@ aws-security-automated-incident-response/
 │   └── incident-response.svg
 │
 ├── assets/
-│   └── lab6-thumbnail.svg
+│   └── lab6-thumbnail.png
 │
 ├── lambda/
 │   ├── detector.py
@@ -405,3 +403,29 @@ The protected security group was independently checked after the incident-respon
 This project is a security engineering lab built for educational and portfolio purposes.
 
 The architecture intentionally uses a controlled AWS environment and a narrowly scoped remediation permission. Production incident-response systems would typically add additional controls such as alerting, centralized observability, retry/dead-letter handling, multi-account support, approval workflows, and broader incident enrichment.
+
+## Review improvements and scope
+
+The original live evidence demonstrates the exact TCP/22 IPv4 scenario. Later code improvements are covered by automated tests with fake EC2 clients; they have not been redeployed as part of the repository review.
+
+- Detection and verification also cover numeric TCP, port ranges containing 22, all-protocol rules, and `::/0`.
+- Remediation reads current permissions and revokes matching public sources with their exact protocol and port bounds. Trusted CIDRs remain unchanged. Removing a public range or all-protocol rule also removes its other public ports, an intentional containment tradeoff in this isolated lab.
+- EventBridge filters the protected group; the responder independently checks `PROTECTED_SECURITY_GROUP_ID`, in addition to the scoped IAM permission.
+- Duplicate delivery with an already removed rule proceeds to independent verification. Failed verification raises an error instead of reporting the incident handled.
+- The trigger remains `AuthorizeSecurityGroupIngress`; modifications through other APIs and pre-existing exposure require additional detection or periodic reconciliation.
+
+### Evidence
+
+See the [evidence index](evidence/README.md) and [incident report](docs/incident-report.md). Historical screenshots are not evidence of a new deployment or a current AWS account state.
+
+### Cost and cleanup
+
+Local tests and CI do not deploy AWS resources. A deployment can incur S3 storage/request and CloudWatch/Lambda usage charges. After a live exercise, review `terraform plan -destroy` from `terraform/` and then run `terraform destroy` using the original state. A nonempty CloudTrail bucket will block deletion: stop the lab trail and review/export required evidence before emptying **only the lab bucket**. Check for remaining lab log groups and S3 objects afterward; deleting Terraform state does not delete resources. Billing alerts do not stop services.
+
+### Implementation reference
+
+[EC2 revoke API: permission properties must match the existing rule](https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_RevokeSecurityGroupIngress.html).
+
+## Related portfolio labs
+
+[Lab 1: Linux support & troubleshooting](https://github.com/ozangirginwork-wq/linux-it-support-troubleshooting-lab) · [Lab 2: Windows Server & Active Directory](https://github.com/ozangirginwork-wq/windows-server-active-directory-lab) · [Lab 3: Python IT automation](https://github.com/ozangirginwork-wq/python-it-cloud-automation-lab) · [Lab 4: AWS security incident investigation](https://github.com/ozangirginwork-wq/aws-security-incident-response-lab) · [Lab 5: Secure Terraform & CI security](https://github.com/ozangirginwork-wq/terraform-cicd-pipeline)

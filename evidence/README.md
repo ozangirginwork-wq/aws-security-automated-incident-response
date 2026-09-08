@@ -1,16 +1,13 @@
-# Evidence Screenshots
+# Historical lab evidence
 
-Public-portfolio evidence for Lab 6 — AWS Security Detection & Automated Incident Response.
+These artifacts document the original Lab 6 exercise. They do not represent a new deployment of the reviewed code or the current state of the AWS account.
 
-The evidence set documents the workflow without exposing AWS account identifiers, resource IDs, ARNs, source IP addresses, request IDs, or local filesystem paths.
+1. [Terraform deployment capture](01-terraform-apply-sanitized.png).
+2. [Controlled SSH exposure — sanitized transcript](02-security-group-event-sanitized.md).
+3. [Lambda remediation and verification capture](03-lambda-remediation-verified-sanitized.png).
 
-## Evidence set
+The two screenshots retain the original interface and include explanatory overlays added during the earlier sanitization. Overlays are annotations, not raw AWS output. Nonsecret local paths, timestamps and request identifiers may remain visible.
 
-1. `01-terraform-apply-sanitized.jpg` — Terraform deployment/update completed successfully.
-2. `02-security-group-event-sanitized.jpg` — Controlled public-SSH security-group event test.
-3. `03-lambda-remediation-verified-sanitized.jpg` — Detection → investigation → remediation → independent verification.
-4. `lab6-evidence-contact-sheet.jpg` — Compact overview of the three sanitized evidence captures.
+The previous security-group event screenshot still exposed an account ID and resource ARN despite its sanitization label. It has been replaced in the current repository with a clearly labeled text transcript. Older Git history may retain that screenshot. No history rewrite was performed.
 
-## Security note
-
-These screenshots are sanitized specifically for a public GitHub portfolio. They are not intended to expose production identifiers or credentials.
+The sample under `sample-events/` is synthetic test input, separate from this historical evidence. No contact-sheet file is included.

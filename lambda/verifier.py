@@ -1,3 +1,6 @@
+from rules import public_permissions
+
+
 def verify_remediation(response, ec2_client=None):
     """
     Verify remediation.
@@ -29,7 +32,7 @@ def verify_remediation(response, ec2_client=None):
             ),
         }
 
-    if response.get("status") != "REMEDIATED":
+    if response.get("status") not in {"REMEDIATED", "ALREADY_SECURE"}:
         return {
             "status": "NOT_VERIFIED",
             "mode": "LIVE",
@@ -53,19 +56,11 @@ def verify_remediation(response, ec2_client=None):
         GroupIds=[security_group]
     )
 
-    for permission in result["SecurityGroups"][0].get("IpPermissions", []):
-        if (
-            permission.get("IpProtocol") == "tcp"
-            and permission.get("FromPort") <= 22
-            and permission.get("ToPort") >= 22
-        ):
-            for ip_range in permission.get("IpRanges", []):
-                if ip_range.get("CidrIp") == "0.0.0.0/0":
-                    return {
-                        "status": "FAILED",
-                        "mode": "LIVE",
-                        "message": "Public SSH exposure still exists.",
-                    }
+    groups = result.get("SecurityGroups", [])
+    if len(groups) != 1 or groups[0].get("GroupId") != security_group:
+        return {"status": "FAILED", "mode": "LIVE", "message": "Requested group was not returned."}
+    if public_permissions(groups[0].get("IpPermissions")):
+        return {"status": "FAILED", "mode": "LIVE", "message": "Public IPv4 or IPv6 SSH exposure still exists."}
 
     return {
         "status": "VERIFIED",

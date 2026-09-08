@@ -57,7 +57,29 @@ resource "aws_s3_bucket_lifecycle_configuration" "cloudtrail" {
 # and write log objects.
 data "aws_iam_policy_document" "cloudtrail_bucket" {
   statement {
+    sid       = "DenyInsecureTransport"
+    effect    = "Deny"
+    actions   = ["s3:*"]
+    resources = [aws_s3_bucket.cloudtrail.arn, "${aws_s3_bucket.cloudtrail.arn}/*"]
+    principals {
+      type        = "*"
+      identifiers = ["*"]
+    }
+    condition {
+      test     = "Bool"
+      variable = "aws:SecureTransport"
+      values   = ["false"]
+    }
+  }
+
+  statement {
     sid = "AWSCloudTrailAclCheck"
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:SourceArn"
+      values   = ["arn:aws:cloudtrail:us-east-1:${data.aws_caller_identity.current.account_id}:trail/lab6-cloudtrail"]
+    }
 
     effect = "Allow"
 
@@ -77,6 +99,12 @@ data "aws_iam_policy_document" "cloudtrail_bucket" {
 
   statement {
     sid = "AWSCloudTrailWrite"
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:SourceArn"
+      values   = ["arn:aws:cloudtrail:us-east-1:${data.aws_caller_identity.current.account_id}:trail/lab6-cloudtrail"]
+    }
 
     effect = "Allow"
 
@@ -114,6 +142,7 @@ resource "aws_cloudtrail" "lab6" {
   include_global_service_events = false
   is_multi_region_trail         = false
   enable_logging                = true
+  enable_log_file_validation    = true
 
   depends_on = [
     aws_s3_bucket_policy.cloudtrail
