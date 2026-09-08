@@ -6,21 +6,21 @@ A hands-on AWS security engineering project that detects dangerous security grou
 
 ![Lab 6 — AWS Automated Incident Response](assets/lab6-thumbnail.png)
 
-> **Portfolio focus:** cloud security, incident response, security automation, Infrastructure as Code, Python/Boto3, IAM least privilege, and post-remediation verification.
+## Skills Demonstrated
+
+**AWS • CloudTrail • EventBridge • Lambda • Python/Boto3 • IAM • Terraform • GitHub Actions • Incident Response • Security Automation • Pytest**
 
 The project demonstrates a complete incident-response workflow:
 
 **Detect → Investigate → Remediate → Verify**
 
-When an AWS security group is modified to allow SSH (TCP/22) from `0.0.0.0/0`, the system detects the CloudTrail event, invokes an AWS Lambda response function, removes the dangerous ingress rule, and independently verifies that the exposure no longer exists.
+When an AWS security group is modified to allow SSH (TCP/22) from `0.0.0.0/0`, CloudTrail records the API activity, EventBridge routes the relevant event to Lambda, the response code removes the dangerous ingress rule, and a separate verification step queries AWS to confirm that the exposure is gone.
 
 ---
 
-## Architecture
+## Architecture Overview
 
 ![AWS automated incident response architecture](architecture/incident-response.svg)
-
-The infrastructure is provisioned with Terraform.
 
 ```text
 Security Group Change
@@ -43,53 +43,37 @@ Security Group Change
  Protected Security Group
 ```
 
+Terraform provisions the lab infrastructure so the architecture is reproducible and reviewable as code.
+
 ---
 
 ## Incident Scenario
 
-The simulated security incident is an EC2 security group modification that exposes:
+The controlled incident is an EC2 security group modification exposing:
 
 ```text
 TCP/22
 0.0.0.0/0
 ```
 
-This represents SSH being opened to the entire IPv4 internet.
-
-The project responds automatically rather than relying on manual investigation and remediation.
+This represents SSH being opened to the entire IPv4 internet. Instead of relying on manual response, the lab detects and contains the exposure automatically.
 
 ---
 
-## Detection
+## How Detection Works
 
-CloudTrail records AWS API activity.
+1. **CloudTrail** records the `AuthorizeSecurityGroupIngress` API event.
+2. **EventBridge** matches the relevant security-group change and invokes the response Lambda.
+3. The **detector** examines the event and determines whether TCP/22 has been exposed to `0.0.0.0/0`.
+4. Benign changes such as restricted SSH access or public HTTPS are ignored.
 
-EventBridge monitors for:
-
-```text
-AuthorizeSecurityGroupIngress
-```
-
-The Lambda detector then examines the event and determines whether the new rule exposes TCP port 22 to `0.0.0.0/0`.
-
-Benign changes such as restricted SSH access or public HTTPS are ignored by the detector.
+The implementation and tests also cover numeric TCP, port ranges containing 22, all-protocol rules, IPv6 public exposure, duplicate delivery, and verification failures.
 
 ---
 
 ## Investigation
 
-When dangerous SSH exposure is detected, the Lambda function extracts incident context including:
-
-- API event
-- identity type
-- actor
-- source IP
-- affected security group
-- AWS region
-- timestamp
-- severity
-
-This produces structured incident information for the response workflow and CloudWatch logs.
+For a detected incident, the Lambda extracts structured context including the API event, identity type, actor, source IP, affected security group, AWS Region, timestamp, and severity. This information supports the response decision and provides useful CloudWatch logging for investigation.
 
 ---
 
@@ -101,149 +85,134 @@ The response stage calls:
 ec2:RevokeSecurityGroupIngress
 ```
 
-to remove the dangerous public SSH rule.
+The remediation is intentionally narrow: it removes matching public SSH exposure from the protected lab security group. It does **not** broadly modify unrelated security groups or trusted CIDRs.
 
-Live remediation is protected by an additional environment-variable safety control:
+Two additional safety controls reduce accidental changes:
 
-```text
-ENABLE_LIVE_REMEDIATION
-```
+- `ENABLE_LIVE_REMEDIATION` gates live modification.
+- The remediation function defaults to dry-run behavior when called independently.
 
-The remediation function also defaults to dry-run mode when called independently, reducing the risk of accidental destructive actions during development and testing.
+Removing a matching public range or all-protocol rule necessarily removes the matching rule as represented by AWS; this is an intentional containment tradeoff in the isolated lab.
 
 ---
 
 ## Independent Verification
 
-Successful API execution alone is not treated as proof that the incident has been resolved.
-
-After remediation, the verifier queries AWS using:
+A successful revoke API call is not treated as proof of remediation. After the response, the verifier calls:
 
 ```text
 ec2:DescribeSecurityGroups
 ```
 
-and independently confirms that TCP/22 is no longer exposed to `0.0.0.0/0`.
-
-This completes the workflow:
+and queries the resulting AWS state. The workflow reports success only when public SSH exposure is no longer present.
 
 ```text
-DETECTED
-   ↓
-INVESTIGATED
-   ↓
-REMEDIATED
-   ↓
-VERIFIED
+DETECTED → INVESTIGATED → REMEDIATED → VERIFIED
 ```
+
+If verification fails, the workflow raises an error rather than falsely reporting the incident as resolved.
 
 ---
 
-## Least-Privilege IAM
+## Least-Privilege Design
 
-The Lambda execution role follows least-privilege principles.
+The Lambda execution role follows least-privilege principles:
 
-The write permission:
+- `ec2:RevokeSecurityGroupIngress` is scoped to the protected Lab 6 security group.
+- `ec2:DescribeSecurityGroups` is read-only and uses `Resource = "*"` because AWS does not support resource-level restriction for that action.
+- CloudWatch logging uses the standard Lambda basic execution permissions.
+- EventBridge filters for the protected group, while the responder independently checks `PROTECTED_SECURITY_GROUP_ID` as an additional application-level safety boundary.
 
-```text
-ec2:RevokeSecurityGroupIngress
-```
-
-is restricted to the protected Lab 6 security group.
-
-The verifier receives only the read-only:
-
-```text
-ec2:DescribeSecurityGroups
-```
-
-permission required to confirm the resulting AWS state. AWS does not support resource-level restriction for this read action, so the policy uses `Resource = "*"` only where required.
-
-CloudWatch logging permissions are provided through the standard AWS Lambda basic execution role.
+The repository and CI contain no AWS credentials; CI validates code without deploying infrastructure.
 
 ---
 
-## CloudTrail Security
+## CloudTrail & Logging Security
 
-CloudTrail management events are delivered to a dedicated S3 bucket.
-
-The bucket is configured with:
+CloudTrail management events are delivered to a dedicated S3 bucket configured with:
 
 - S3 Block Public Access
 - server-side encryption
-- CloudTrail bucket policy restricted to the lab trail ARN
-- HTTPS-only bucket access and CloudTrail log file validation
+- HTTPS-only access
+- CloudTrail log-file validation
+- bucket policy restricted for the lab trail
 - 30-day lifecycle expiration
 
-The short retention period keeps the lab lightweight while limiting unnecessary long-term storage.
+The short retention period keeps the temporary lab lightweight while limiting unnecessary storage.
 
 ---
 
 ## Infrastructure as Code
 
-Terraform provisions the AWS infrastructure, including:
+Terraform provisions:
 
 - VPC
 - protected security group
 - restricted default security group
-- Lambda execution role
-- least-privilege IAM policy
+- Lambda execution role and least-privilege IAM policy
 - Lambda function
 - CloudWatch log group
 - EventBridge rule and target
 - CloudTrail trail
 - encrypted S3 logging bucket
 
-No EC2 instances, NAT Gateways, load balancers, or databases are required for the project.
+No EC2 instances, NAT Gateways, load balancers, or databases are required.
 
 ---
 
 ## Testing & CI
 
-The Python detection and verification logic includes automated tests.
-
-The test suite validates scenarios including:
-
-- public SSH exposure is detected
-- restricted SSH is allowed
-- public HTTPS is ignored
-- unrelated AWS API events are ignored
-- valid dry-run remediation is verified
-- successful live remediation is verified
-- remaining public SSH exposure causes verification failure
-- unsuccessful remediation is not falsely reported as verified
-
-Run locally with:
+Run the local validation suite with:
 
 ```bash
 python -m pip install -r requirements-dev.txt
 python -m pytest tests -q
 ```
 
-The original live implementation had eight unit tests. The expanded suite also covers port ranges, all-protocol rules, IPv6, duplicate delivery, safety gates, and verification failures. See CI for current results.
+Tests exercise dangerous and benign ingress changes, dry-run/live response behavior, port ranges, IPv6, duplicate delivery, safety gates, and verification failures.
 
-GitHub Actions also runs the Python tests plus Terraform formatting and validation on pushes and pull requests. CI does **not** require AWS credentials and does not perform an AWS deployment.
+GitHub Actions runs Python tests plus Terraform formatting and validation on pushes and pull requests. The workflow requires no AWS credentials and performs no AWS deployment.
+
+---
+
+## Troubleshooting & Lessons Learned
+
+The project included real implementation and cleanup problems rather than only a successful happy path:
+
+- **Lambda execution time:** the live response approached the original timeout while an additional AWS verification call was being added. The timeout was increased to provide enough room for remediation and independent verification rather than removing the verification control.
+- **CI runtime compatibility:** an early GitHub Actions run failed during Python setup with the selected runtime. The workflow was moved to a supported Python 3.12 configuration and validation subsequently passed.
+- **CloudTrail cleanup:** Terraform initially could not remove the CloudTrail S3 bucket because it was non-empty. The lab bucket was reviewed/cleaned and a later `terraform plan -destroy` reported no remaining Terraform-managed objects.
+
+These failures reinforced three operational lessons: verify state instead of trusting API success, treat CI failures as reproducibility problems to diagnose, and plan teardown for stateful logging resources before deployment.
+
+---
+
+## Validation Evidence
+
+Public portfolio evidence is intentionally sanitized. See the [evidence index](evidence/README.md) for the historical deployment, controlled incident, and automated remediation/verification artifacts.
+
+- [Terraform deployment evidence](evidence/01-terraform-apply-sanitized.png)
+- [Controlled SSH exposure transcript](evidence/02-security-group-event-sanitized.md)
+- [Lambda remediation & verification evidence](evidence/03-lambda-remediation-verified-sanitized.png)
+
+Historical evidence demonstrates the original live TCP/22 IPv4 scenario. Later hardening is validated by automated tests and should not be represented as a new AWS deployment.
 
 ---
 
 ## Security Controls
 
-This project intentionally includes multiple defensive controls:
-
 | Control | Purpose |
 |---|---|
-| Event-driven detection | Respond quickly to security group changes |
+| Event-driven detection | Respond quickly to security-group changes |
 | Least-privilege IAM | Restrict remediation capability |
 | Protected SG scope | Limit destructive actions to the lab target |
 | Dry-run support | Safely test remediation logic |
 | Live-remediation gate | Prevent unintended live changes |
 | Independent verification | Confirm the AWS resource is actually secure |
 | CloudTrail logging | Preserve AWS API activity |
-| S3 encryption | Protect audit logs at rest |
-| S3 Block Public Access | Prevent public exposure of logs |
-| Log lifecycle | Limit unnecessary storage |
-| Automated tests | Validate detection and verification behavior |
-| Credential-free CI | Validate code without storing AWS secrets in GitHub |
+| S3 encryption & Block Public Access | Protect audit logs |
+| Automated tests | Validate detection and response behavior |
+| Credential-free CI | Validate code without storing AWS secrets |
 
 ---
 
@@ -251,46 +220,17 @@ This project intentionally includes multiple defensive controls:
 
 ```text
 aws-security-automated-incident-response/
-│
-├── .github/workflows/
-│   └── ci.yml
-│
-├── architecture/
-│   └── incident-response.svg
-│
-├── assets/
-│   └── lab6-thumbnail.png
-│
-├── lambda/
-│   ├── detector.py
-│   ├── handler.py
-│   ├── investigator.py
-│   ├── remediation.py
-│   └── verifier.py
-│
-├── terraform/
-│   ├── main.tf
-│   ├── response.tf
-│   ├── eventbridge.tf
-│   ├── cloudtrail.tf
-│   └── logging.tf
-│
-├── tests/
-│   ├── test_detector.py
-│   └── test_verifier.py
-│
-├── sample-events/
-│   └── unsafe-security-group.json
-│
-├── docs/
-│   ├── incident-report.md
-│   └── threat-model.md
-│
-├── pattern.json
-├── response.json
+├── .github/workflows/       # CI validation
+├── architecture/            # Architecture diagram
+├── assets/                  # Portfolio visual
+├── lambda/                  # Detection, investigation, response, verification
+├── terraform/               # AWS Infrastructure as Code
+├── tests/                   # Automated Python tests
+├── sample-events/           # Synthetic test events
+├── evidence/                # Sanitized historical evidence
+├── docs/                    # Incident report and threat model
 ├── requirements-dev.txt
 ├── SECURITY.md
-├── .gitignore
 └── README.md
 ```
 
@@ -298,25 +238,7 @@ aws-security-automated-incident-response/
 
 ## Security & Repository Hygiene
 
-Sensitive local artifacts are intentionally excluded from source control, including:
-
-```text
-.terraform/
-*.tfstate
-*.tfstate.*
-*.tfvars
-*.tfvars.json
-*.zip
-.env
-*.pem
-*.key
-```
-
-Sample events use synthetic account IDs, security group IDs, usernames, and documentation-only IP addresses rather than real environment information.
-
-Terraform state is never committed to the repository.
-
-The repository contains no AWS access keys or private keys. CI is designed to run without cloud credentials.
+Sensitive local artifacts are excluded from source control, including Terraform state/variables, environment files, deployment archives, and private-key formats. Sample events use synthetic identifiers and documentation-only IP addresses rather than real environment information.
 
 See [`SECURITY.md`](SECURITY.md) for the repository security policy.
 
@@ -324,57 +246,16 @@ See [`SECURITY.md`](SECURITY.md) for the repository security policy.
 
 ## Technologies
 
-**AWS**
-
-- AWS Lambda
-- AWS CloudTrail
-- Amazon EventBridge
-- Amazon S3
-- Amazon CloudWatch
-- AWS IAM
-- Amazon VPC
-- EC2 Security Groups
-
-**Infrastructure & Development**
-
-- Terraform
-- Python
-- Boto3
-- Pytest
-- Git
-- GitHub Actions
-- AWS CLI
-
----
-
-## What This Project Demonstrates
-
-This project demonstrates practical experience with:
-
-- AWS security engineering
-- cloud incident response
-- security automation
-- event-driven architecture
-- Infrastructure as Code
-- Terraform
-- Python/Boto3
-- CloudTrail investigation
-- EventBridge automation
-- Lambda
-- IAM least privilege
-- automated remediation
-- post-remediation verification
-- security-focused testing
-- CI validation
-- secure repository practices
+**AWS:** Lambda, CloudTrail, EventBridge, S3, CloudWatch, IAM, VPC, EC2 Security Groups  
+**Infrastructure & Development:** Terraform, Python, Boto3, Pytest, Git, GitHub Actions, AWS CLI
 
 ---
 
 ## Project Status
 
-**Working end-to-end implementation**
+**Working end-to-end lab implementation with automated regression testing.**
 
-A live AWS test successfully demonstrated:
+The original live exercise demonstrated:
 
 ```text
 Security group exposed
@@ -394,38 +275,18 @@ AWS state independently queried
 Remediation VERIFIED
 ```
 
-The protected security group was independently checked after the incident-response workflow and contained no remaining ingress permissions.
+The lab infrastructure was subsequently torn down. Historical screenshots/logs are evidence of that exercise, not evidence of a currently deployed AWS environment.
 
 ---
 
-## Disclaimer
+## Scope & Production Considerations
 
-This project is a security engineering lab built for educational and portfolio purposes.
+This is an educational/portfolio security engineering lab, not a production incident-response platform.
 
-The architecture intentionally uses a controlled AWS environment and a narrowly scoped remediation permission. Production incident-response systems would typically add additional controls such as alerting, centralized observability, retry/dead-letter handling, multi-account support, approval workflows, and broader incident enrichment.
+The trigger currently focuses on `AuthorizeSecurityGroupIngress`; pre-existing exposure and changes made through other APIs would require additional detection or periodic reconciliation. A production implementation would also typically add centralized observability, alerting, retries/dead-letter handling, multi-account support, approval/escalation workflows, broader incident enrichment, and operational runbooks.
 
-## Review improvements and scope
+---
 
-The original live evidence demonstrates the exact TCP/22 IPv4 scenario. Later code improvements are covered by automated tests with fake EC2 clients; they have not been redeployed as part of the repository review.
-
-- Detection and verification also cover numeric TCP, port ranges containing 22, all-protocol rules, and `::/0`.
-- Remediation reads current permissions and revokes matching public sources with their exact protocol and port bounds. Trusted CIDRs remain unchanged. Removing a public range or all-protocol rule also removes its other public ports, an intentional containment tradeoff in this isolated lab.
-- EventBridge filters the protected group; the responder independently checks `PROTECTED_SECURITY_GROUP_ID`, in addition to the scoped IAM permission.
-- Duplicate delivery with an already removed rule proceeds to independent verification. Failed verification raises an error instead of reporting the incident handled.
-- The trigger remains `AuthorizeSecurityGroupIngress`; modifications through other APIs and pre-existing exposure require additional detection or periodic reconciliation.
-
-### Evidence
-
-See the [evidence index](evidence/README.md) and [incident report](docs/incident-report.md). Historical screenshots are not evidence of a new deployment or a current AWS account state.
-
-### Cost and cleanup
-
-Local tests and CI do not deploy AWS resources. A deployment can incur S3 storage/request and CloudWatch/Lambda usage charges. After a live exercise, review `terraform plan -destroy` from `terraform/` and then run `terraform destroy` using the original state. A nonempty CloudTrail bucket will block deletion: stop the lab trail and review/export required evidence before emptying **only the lab bucket**. Check for remaining lab log groups and S3 objects afterward; deleting Terraform state does not delete resources. Billing alerts do not stop services.
-
-### Implementation reference
-
-[EC2 revoke API: permission properties must match the existing rule](https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_RevokeSecurityGroupIngress.html).
-
-## Related portfolio labs
+## Related Portfolio Labs
 
 [Lab 1: Linux support & troubleshooting](https://github.com/ozangirginwork-wq/linux-it-support-troubleshooting-lab) · [Lab 2: Windows Server & Active Directory](https://github.com/ozangirginwork-wq/windows-server-active-directory-lab) · [Lab 3: Python IT automation](https://github.com/ozangirginwork-wq/python-it-cloud-automation-lab) · [Lab 4: AWS security incident investigation](https://github.com/ozangirginwork-wq/aws-security-incident-response-lab) · [Lab 5: Secure Terraform & CI security](https://github.com/ozangirginwork-wq/terraform-cicd-pipeline)
