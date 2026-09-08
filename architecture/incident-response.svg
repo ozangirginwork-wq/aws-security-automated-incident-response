@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="700" viewBox="0 0 1400 700" role="img" aria-labelledby="title desc">
+<title id="title">AWS automated incident response architecture</title>
+<desc id="desc">CloudTrail sends security group API events to EventBridge, which invokes Lambda for detection, investigation, remediation and verification of a protected security group.</desc>
+<rect width="1400" height="700" fill="#f8fafc"/>
+<text x="700" y="70" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="34" font-weight="700" fill="#0f172a">AWS Automated Incident Response</text>
+<text x="700" y="108" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="19" fill="#475569">Public SSH exposure detection and controlled remediation</text>
+
+<g font-family="Arial,Helvetica,sans-serif" text-anchor="middle">
+<g transform="translate(70 230)"><rect width="230" height="150" rx="20" fill="#ffffff" stroke="#64748b" stroke-width="2"/><text x="115" y="62" font-size="25" font-weight="700" fill="#0f172a">Security Group</text><text x="115" y="98" font-size="19" fill="#475569">TCP/22 from</text><text x="115" y="126" font-size="19" fill="#475569">0.0.0.0/0</text></g>
+<g transform="translate(380 230)"><rect width="230" height="150" rx="20" fill="#ffffff" stroke="#64748b" stroke-width="2"/><text x="115" y="72" font-size="25" font-weight="700" fill="#0f172a">CloudTrail</text><text x="115" y="108" font-size="19" fill="#475569">API activity</text></g>
+<g transform="translate(690 230)"><rect width="230" height="150" rx="20" fill="#ffffff" stroke="#64748b" stroke-width="2"/><text x="115" y="72" font-size="25" font-weight="700" fill="#0f172a">EventBridge</text><text x="115" y="108" font-size="19" fill="#475569">Event routing</text></g>
+<g transform="translate(1000 200)"><rect width="290" height="210" rx="20" fill="#ffffff" stroke="#2563eb" stroke-width="3"/><text x="145" y="58" font-size="27" font-weight="700" fill="#0f172a">Lambda</text><text x="145" y="98" font-size="19" fill="#334155">Detect</text><text x="145" y="128" font-size="19" fill="#334155">Investigate</text><text x="145" y="158" font-size="19" fill="#334155">Remediate</text><text x="145" y="188" font-size="19" fill="#334155">Verify</text></g>
+
+<path d="M300 305 H370" stroke="#334155" stroke-width="5"/><path d="M360 293 L378 305 L360 317" fill="none" stroke="#334155" stroke-width="5"/>
+<path d="M610 305 H680" stroke="#334155" stroke-width="5"/><path d="M670 293 L688 305 L670 317" fill="none" stroke="#334155" stroke-width="5"/>
+<path d="M920 305 H990" stroke="#334155" stroke-width="5"/><path d="M980 293 L998 305 L980 317" fill="none" stroke="#334155" stroke-width="5"/>
+
+<g transform="translate(1000 485)"><rect width="290" height="100" rx="18" fill="#eff6ff" stroke="#93c5fd" stroke-width="2"/><text x="145" y="42" font-size="22" font-weight="700" fill="#0f172a">Independent Verification</text><text x="145" y="73" font-size="18" fill="#475569">DescribeSecurityGroups</text></g>
+<path d="M1145 410 V475" stroke="#334155" stroke-width="5"/><path d="M1133 465 L1145 483 L1157 465" fill="none" stroke="#334155" stroke-width="5"/>
+</g>
+
+<g font-family="Arial,Helvetica,sans-serif"><rect x="80" y="575" width="840" height="58" rx="15" fill="#ffffff" stroke="#cbd5e1"/><text x="500" y="612" text-anchor="middle" font-size="18" fill="#334155">Least privilege • dry-run safety • live-remediation gate • encrypted audit logging</text></g>
+</svg>
