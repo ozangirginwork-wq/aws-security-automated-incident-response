@@ -1,0 +1,37 @@
+{
+  "version": "0",
+  "id": "lab6-simulated-event-001",
+  "detail-type": "AWS API Call via CloudTrail",
+  "source": "aws.ec2",
+  "account": "111122223333",
+  "time": "2026-09-08T00:00:00Z",
+  "region": "us-east-1",
+  "detail": {
+    "eventSource": "ec2.amazonaws.com",
+    "eventName": "AuthorizeSecurityGroupIngress",
+    "userIdentity": {
+      "type": "IAMUser",
+      "userName": "lab6-simulated-user"
+    },
+    "sourceIPAddress": "203.0.113.10",
+    "requestParameters": {
+      "groupId": "sg-0123456789abcdef0",
+      "ipPermissions": {
+        "items": [
+          {
+            "ipProtocol": "tcp",
+            "fromPort": 22,
+            "toPort": 22,
+            "ipRanges": {
+              "items": [
+                {
+                  "cidrIp": "0.0.0.0/0"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  }
+}
