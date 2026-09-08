@@ -1,16 +1,26 @@
 # AWS Security Detection & Automated Incident Response
 
+[![Lab 6 CI](https://github.com/ozangirginwork-wq/aws-security-automated-incident-response/actions/workflows/ci.yml/badge.svg)](https://github.com/ozangirginwork-wq/aws-security-automated-incident-response/actions/workflows/ci.yml)
+
 A hands-on AWS security engineering project that detects dangerous security group changes and automatically remediates public SSH exposure using an event-driven, least-privilege architecture.
+
+![Lab 6 — AWS Automated Incident Response](assets/lab6-thumbnail.svg)
+
+> **Portfolio focus:** cloud security, incident response, security automation, Infrastructure as Code, Python/Boto3, IAM least privilege, and post-remediation verification.
 
 The project demonstrates a complete incident-response workflow:
 
-**Detect → Investigate → Respond → Verify**
+**Detect → Investigate → Remediate → Verify**
 
 When an AWS security group is modified to allow SSH (TCP/22) from `0.0.0.0/0`, the system detects the CloudTrail event, invokes an AWS Lambda response function, removes the dangerous ingress rule, and independently verifies that the exposure no longer exists.
 
 ---
 
 ## Architecture
+
+![AWS automated incident response architecture](architecture/incident-response.svg)
+
+The infrastructure is provisioned with Terraform.
 
 ```text
 Security Group Change
@@ -32,8 +42,6 @@ Security Group Change
         ▼
  Protected Security Group
 ```
-
-The infrastructure is provisioned with Terraform.
 
 ---
 
@@ -149,7 +157,7 @@ The verifier receives only the read-only:
 ec2:DescribeSecurityGroups
 ```
 
-permission required to confirm the resulting AWS state.
+permission required to confirm the resulting AWS state. AWS does not support resource-level restriction for this read action, so the policy uses `Resource = "*"` only where required.
 
 CloudWatch logging permissions are provided through the standard AWS Lambda basic execution role.
 
@@ -189,7 +197,7 @@ No EC2 instances, NAT Gateways, load balancers, or databases are required for th
 
 ---
 
-## Testing
+## Testing & CI
 
 The Python detection and verification logic includes automated tests.
 
@@ -204,17 +212,19 @@ The test suite validates scenarios including:
 - remaining public SSH exposure causes verification failure
 - unsuccessful remediation is not falsely reported as verified
 
-Run the tests with:
+Run locally with:
 
 ```bash
 python -m pytest tests -q
 ```
 
-Expected result:
+The local validation completed with:
 
 ```text
 8 passed
 ```
+
+GitHub Actions also runs the Python tests plus Terraform formatting and validation on pushes and pull requests. CI does **not** require AWS credentials and does not perform an AWS deployment.
 
 ---
 
@@ -235,13 +245,23 @@ This project intentionally includes multiple defensive controls:
 | S3 Block Public Access | Prevent public exposure of logs |
 | Log lifecycle | Limit unnecessary storage |
 | Automated tests | Validate detection and verification behavior |
+| Credential-free CI | Validate code without storing AWS secrets in GitHub |
 
 ---
 
 ## Repository Structure
 
 ```text
-lab6-aws-incident-response/
+aws-security-automated-incident-response/
+│
+├── .github/workflows/
+│   └── ci.yml
+│
+├── architecture/
+│   └── incident-response.svg
+│
+├── assets/
+│   └── lab6-thumbnail.svg
 │
 ├── lambda/
 │   ├── detector.py
@@ -264,12 +284,14 @@ lab6-aws-incident-response/
 ├── sample-events/
 │   └── unsafe-security-group.json
 │
-├── architecture/
 ├── docs/
-├── evidence/
+│   ├── incident-report.md
+│   └── threat-model.md
 │
 ├── pattern.json
 ├── response.json
+├── requirements-dev.txt
+├── SECURITY.md
 ├── .gitignore
 └── README.md
 ```
@@ -296,6 +318,10 @@ Sample events use synthetic account IDs, security group IDs, usernames, and docu
 
 Terraform state is never committed to the repository.
 
+The repository contains no AWS access keys or private keys. CI is designed to run without cloud credentials.
+
+See [`SECURITY.md`](SECURITY.md) for the repository security policy.
+
 ---
 
 ## Technologies
@@ -318,6 +344,7 @@ Terraform state is never committed to the repository.
 - Boto3
 - Pytest
 - Git
+- GitHub Actions
 - AWS CLI
 
 ---
@@ -340,6 +367,7 @@ This project demonstrates practical experience with:
 - automated remediation
 - post-remediation verification
 - security-focused testing
+- CI validation
 - secure repository practices
 
 ---
