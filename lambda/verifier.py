@@ -10,8 +10,8 @@ def verify_remediation(response, ec2_client=None):
         security control.
 
     LIVE:
-        Query AWS and independently verify that TCP/22 is no longer
-        exposed to 0.0.0.0/0.
+        Query AWS and independently verify that no rule exposes SSH
+        to the IPv4 or IPv6 internet, including ranges/all-protocol rules.
     """
 
     if response.get("status") == "DRY_RUN":

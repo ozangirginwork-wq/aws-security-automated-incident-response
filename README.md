@@ -287,6 +287,11 @@ The trigger currently focuses on `AuthorizeSecurityGroupIngress`; pre-existing e
 
 ---
 
-## Related Portfolio Labs
+## Related portfolio labs
 
-[Lab 1: Linux support & troubleshooting](https://github.com/ozangirginwork-wq/linux-it-support-troubleshooting-lab) · [Lab 2: Windows Server & Active Directory](https://github.com/ozangirginwork-wq/windows-server-active-directory-lab) · [Lab 3: Python IT automation](https://github.com/ozangirginwork-wq/python-it-cloud-automation-lab) · [Lab 4: AWS security incident investigation](https://github.com/ozangirginwork-wq/aws-security-incident-response-lab) · [Lab 5: Secure Terraform & CI security](https://github.com/ozangirginwork-wq/terraform-cicd-pipeline)
+- [Lab 1: Linux support & troubleshooting](https://github.com/ozangirginwork-wq/linux-it-support-troubleshooting-lab)
+- [Lab 2: Windows Server & Active Directory](https://github.com/ozangirginwork-wq/windows-server-active-directory-lab)
+- [Lab 3: Python IT automation](https://github.com/ozangirginwork-wq/python-it-cloud-automation-lab)
+- [Lab 4: AWS security incident investigation](https://github.com/ozangirginwork-wq/aws-security-incident-response-lab)
+- [Lab 5: Secure Terraform & CI security](https://github.com/ozangirginwork-wq/terraform-cicd-pipeline)
+- [Lab 7: Secure Kubernetes deployment & troubleshooting](https://github.com/ozangirginwork-wq/secure-kubernetes-deployment-lab)

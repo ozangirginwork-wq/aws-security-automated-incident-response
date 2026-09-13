@@ -6,7 +6,7 @@ This project protects a designated AWS security group against accidental or unau
 
 The protected condition is:
 
-`TCP/22 from 0.0.0.0/0`
+`TCP/22 from 0.0.0.0/0 or ::/0`, including TCP port ranges containing 22 and all-protocol rules. The original live evidence covers the IPv4 TCP/22 case; automated tests cover the additional rule shapes.
 
 The system uses CloudTrail, EventBridge, Lambda, IAM, and EC2 APIs to detect and remediate this condition.
 
@@ -79,7 +79,7 @@ After remediation, the verifier independently queries AWS using:
 
 `ec2:DescribeSecurityGroups`
 
-It confirms that TCP port 22 is no longer exposed to `0.0.0.0/0`.
+It confirms that no rule exposes SSH to `0.0.0.0/0` or `::/0`, including wider TCP ranges and all-protocol rules.
 
 The incident is marked verified only when the AWS resource state confirms that the exposure has been removed.
 
