@@ -6,6 +6,14 @@ A hands-on AWS security engineering project that detects dangerous security grou
 
 ![Lab 6 — AWS Automated Incident Response](assets/lab6-thumbnail.png)
 
+## Evidence highlights
+
+[View three selected screenshots with captions](evidence/highlights/README.md) from the original lab work, cropped and reviewed for privacy. These historical captures were curated on September 25, 2026; they are not new test runs.
+
+![Remediation and independent verification](evidence/highlights/02-remediation-verification.png)
+
+*The visible original log excerpt reports removal of the dangerous public SSH rule, status VERIFIED and mode LIVE. The identifying log-stream string is redacted. This is the original IPv4 scenario, not a fresh deployment.*
+
 ## Skills Demonstrated
 
 **AWS • CloudTrail • EventBridge • Lambda • Python/Boto3 • IAM • Terraform • GitHub Actions • Incident Response • Security Automation • Pytest**
